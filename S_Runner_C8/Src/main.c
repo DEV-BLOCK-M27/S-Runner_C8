@@ -64,7 +64,7 @@ static void MX_USART2_UART_Init(void);
 	volatile uint16_t button_in;		// map input buttons
 	volatile uint16_t buttons_pressed;  // buttons debounced
 
-
+	uint8_t count;
 	uint8_t test;
 	uint8_t	uart_flag;
 uint16_t tim3_count;
@@ -179,19 +179,20 @@ int main(void)
 //		  clock_now = 1;
 //	  }
 
-//	  if(pulse_received){
-//			pulse_received = 0;
-//			midi_status = 1;
-//			HAL_TIM_Base_Start(&htim2);
-//			TIM2->CNT = 0;
-//		}
+	  if(pulse_received){
+			pulse_received = 0;
+			midi_status = 1;
+			HAL_TIM_Base_Start(&htim2);
+			TIM2->CNT = 0;
+		}
 //
-//		if(audio_gapdetected){
-//			audio_gapdetected = 0;
-//			midi_status = 0;
-//			HAL_TIM_Base_Stop(&htim2);
-//		}
-//
+		if(audio_gapdetected){
+			audio_gapdetected = 0;
+			midi_status = 0;
+			HAL_TIM_Base_Stop(&htim2);
+			wait_for_clock = 0;
+		}
+
 //		if(midi_status !=midi_statusold){
 //			midi_statuschanged = 1;
 //			midi_statusold = midi_status;
@@ -220,10 +221,14 @@ int main(void)
 
 	void TIM2_IRQHandler(void)
 	{
-//		HAL_GPIO_WritePin(GPIOB, GPIO_PIN_4, GPIO_PIN_RESET);
-//	   if(midi_status){
-//		  audio_gapdetected = 1;
-//	  }
+		HAL_GPIO_WritePin(GPIOB, GPIO_PIN_4, GPIO_PIN_RESET);
+	    count++;
+	    if(count == 5){
+	    	count = 0;
+		if(midi_status){
+		  audio_gapdetected = 1;
+	  }
+	    }
 //	if(wait_for_clock && midi_status == 0){
 	   tim3_count++;
 	   if(tim3_count == 2)
