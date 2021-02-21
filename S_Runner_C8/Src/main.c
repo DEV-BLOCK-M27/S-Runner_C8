@@ -45,6 +45,9 @@ static void MX_TIM2_Init(void);
 static void MX_TIM3_Init(void);
 static void MX_USART1_UART_Init(void);
 static void MX_USART2_UART_Init(void);
+void stop_wait_for_clock(void);
+void audio_gapdetected_stop(void);
+void pulse_received_handler(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -64,9 +67,10 @@ static void MX_USART2_UART_Init(void);
 	volatile uint16_t button_in;		// map input buttons
 	volatile uint16_t buttons_pressed;  // buttons debounced
 
-	uint8_t count;
-	uint8_t test;
-	uint8_t	uart_flag;
+uint8_t led_count;
+uint8_t count;
+uint8_t test;
+uint8_t	uart_flag;
 uint16_t tim3_count;
 uint8_t wait_for_clock_old;
 uint8_t wait_for_clock;
@@ -106,10 +110,10 @@ int main(void)
 
   NVIC_EnableIRQ(USART1_IRQn);
   HAL_TIM_Base_Start_IT(&htim2);
-  HAL_TIM_Base_Start(&htim2);
+  HAL_TIM_Base_Stop(&htim2);
   HAL_TIM_Base_Start_IT(&htim3);
   HAL_TIM_Base_Start(&htim3);
-
+  buttons_pressed = get_key_press(~button_in);
   //infiniti loop
   while (1)
   {
@@ -151,73 +155,100 @@ int main(void)
 				  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_3, RESET);
 			  }
 		  }
-
-//		  // Set next Trigger for clock
-	  if(wait_for_clock != wait_for_clock_old){
-		  wait_for_clock_old = wait_for_clock;
-		  if(wait_for_clock ){
-			  USART1-> CR1 |= (1<<3);
-			  buffer[0] = midi_start;
-			  HAL_UART_Transmit_IT(&huart1, buffer, sizeof(buffer));
-			  clock_now = 1;
-			  HAL_TIM_Base_Start(&htim2);
-		      TIM2->CNT = 0;
-		      HAL_GPIO_WritePin(GPIOB, GPIO_PIN_4, SET);
-		  }
-		  else{
-			  USART1-> CR1 |= (1<<3);
-			  buffer[0] = midi_stop;
-			  HAL_UART_Transmit_IT(&huart1, buffer, sizeof(buffer));
-			  clock_now = 0;
-			  HAL_TIM_Base_Stop(&htim2);
-			  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_4, RESET);
-		  }
-	  }
-
-//	  if(pulse_count == 192){
-//		  pulse_count = 0;
-//		  clock_now = 1;
-//	  }
-
-	  if(pulse_received){
-			pulse_received = 0;
-			midi_status = 1;
-			HAL_TIM_Base_Start(&htim2);
-			TIM2->CNT = 0;
+//Mode 1:
+		if(mode==0){
+			//Mode 1:
+			// Set next Trigger for clock
+			  if(wait_for_clock != wait_for_clock_old){
+				  wait_for_clock_old = wait_for_clock;
+				  if(wait_for_clock ){
+					  USART1-> CR1 |= (1<<3);
+					  buffer[0] = midi_start;
+					  HAL_UART_Transmit_IT(&huart1, buffer, sizeof(buffer));
+					  clock_now = 1;
+					  HAL_TIM_Base_Start(&htim2);
+					  TIM2->CNT = 0;
+					  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_4, SET);
+				  }
+				  else{
+					  stop_wait_for_clock();
+				  }
+			  }
+			  	  // Audio input active
+				 if(pulse_received){
+					  pulse_received_handler();
+					}
+				 // Audio input inactive
+				if(audio_gapdetected){
+					audio_gapdetected_stop();
+					wait_for_clock = 0;
+				}
 		}
-//
-		if(audio_gapdetected){
-			audio_gapdetected = 0;
-			midi_status = 0;
-			HAL_TIM_Base_Stop(&htim2);
-			wait_for_clock = 0;
+			//Mode 2:
+		else{
+			  if(pulse_count == 384){
+				  USART1-> CR1 |= (1<<3);
+				  buffer[0] = midi_start;
+				  HAL_UART_Transmit_IT(&huart1, buffer, sizeof(buffer));
+				  pulse_count = 0;
+				  clock_now = 1;
+			  }
+			 if(pulse_received){
+				  pulse_received_handler();
+				  pulse_count = 0;
+				}
+			 // Audio input inactive
+			if(audio_gapdetected){
+				audio_gapdetected_stop();
+				USART1-> CR1 |= (1<<3);
+			    buffer[0] = midi_stop;
+			    HAL_UART_Transmit_IT(&huart1, buffer, sizeof(buffer));
+				pulse_count = 0;
+				HAL_TIM_Base_Stop(&htim2);
+				TIM2->CNT = 0;
+			}
 		}
-
-//		if(midi_status !=midi_statusold){
-//			midi_statuschanged = 1;
-//			midi_statusold = midi_status;
-//		}
-//		if(midi_statuschanged){
-//			midi_statuschanged = 0;
-//			if(midi_status){
-//				// send MIDI start
-//				USART1-> CR1 |= (1<<3);
-//				buffer[0] = midi_start;
-//				HAL_UART_Transmit_IT(&huart1, buffer, sizeof(buffer));
-////				HAL_GPIO_WritePin(GPIOB, GPIO_PIN_4, GPIO_PIN_SET);
-//				}
-//				// send MIDI stop
-//			else{
-//				USART1-> CR1 |= (1<<3);
-//				buffer[0] = midi_stop;
-//				HAL_UART_Transmit_IT(&huart1, buffer, sizeof(buffer));
-////				HAL_GPIO_WritePin(GPIOB, GPIO_PIN_4, GPIO_PIN_RESET);
-//				}
-//			}
 	  }//end while
 	}// end main
 
+void pulse_received_handler(void){
+	pulse_received = 0;
+	midi_status = 1;
+	HAL_TIM_Base_Start(&htim2);
+	TIM2->CNT = 0;
+	if(uart_flag){
+		uart_flag=0;
+		led_count++;
+		// Toogle LED
+		if(led_count==8){
+		   HAL_GPIO_WritePin(GPIOB, GPIO_PIN_4, RESET);
+		}
+		if(led_count==24){
+			led_count=0;
+			HAL_GPIO_WritePin(GPIOB, GPIO_PIN_4, SET);
+		}
+	}
+}
 
+void audio_gapdetected_stop(void){
+	audio_gapdetected = 0;
+	clock_now = 0;
+	pulse_received = 0;
+	pulse_count = 0;
+    led_count=0;
+    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_4, RESET);
+}
+
+void stop_wait_for_clock(void){
+	  USART1-> CR1 |= (1<<3);
+	  buffer[0] = midi_stop;
+	  HAL_UART_Transmit_IT(&huart1, buffer, sizeof(buffer));
+	  clock_now = 0;
+	  TIM2->CNT = 0;
+	  HAL_TIM_Base_Stop(&htim2);
+	  led_count=0;
+	  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_4, RESET);
+}
 
 	void TIM2_IRQHandler(void)
 	{
@@ -268,37 +299,31 @@ int main(void)
 
 	void USART1_IRQHandler(void)
 	{
-	  /* USER CODE BEGIN USART1_IRQn 0 */
 		uart_flag++;
-//		USART1-> SR &= ~(1<<6);
-
-//		EXTI->IMR |= (1<<0);
 		test = USART1-> DR;
 		USART1-> CR1 &= ~(1<<3);
-	  /* USER CODE END USART1_IRQn 0 */
-	  HAL_UART_IRQHandler(&huart1);
-	  /* USER CODE BEGIN USART1_IRQn 1 */
 
-	  /* USER CODE END USART1_IRQn 1 */
+		HAL_UART_IRQHandler(&huart1);
+
 	}
 
 
 	void EXTI0_IRQHandler(void)
 	{
+		// Send MIDI clock
 		if(clock_now){ //&& pulse_count == 0
-						USART1-> CR1 |= (1<<3);
-//						USART1->DR = midi_clock;
-//						test = USART1->SR (1<<6);
-//						while(USART1->SR &(1<<6));+
-						buffer[0] = midi_clock;
-						HAL_UART_Transmit_IT(&huart1, buffer, 1);
-//						HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_4);
-						uart_flag = 0;
-						pulse_received = 1;
-					}
-					else{
-						pulse_count++;
-					}
+			USART1-> CR1 |= (1<<3);
+			buffer[0] = midi_clock;
+			HAL_UART_Transmit_IT(&huart1, buffer, 1);
+			pulse_received = 1;
+
+		}
+		else{
+			pulse_count++;
+		}
+
+
+
 		HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_0);
 	}
 //
