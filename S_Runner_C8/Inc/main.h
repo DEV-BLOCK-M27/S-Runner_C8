@@ -64,9 +64,9 @@ void Error_Handler(void);
 #define Button_1_GPIO_Port GPIOB
 #define Button_2_Pin GPIO_PIN_2
 #define Button_2_GPIO_Port GPIOB
-#define LED1_Pin GPIO_PIN_3
+#define LED1_Pin GPIO_PIN_9
 #define LED1_GPIO_Port GPIOB
-#define LED2_Pin GPIO_PIN_4
+#define LED2_Pin GPIO_PIN_10
 #define LED2_GPIO_Port GPIOB
 /* USER CODE BEGIN Private defines */
 

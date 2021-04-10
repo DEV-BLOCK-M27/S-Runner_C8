@@ -106,7 +106,7 @@ int main(void)
   USART1-> CR1 |= (1<<6);
 //  USART1-> CR1 |= (1<<7);
   AFIO->MAPR |= (1<<24);
-//  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_4, SET);
+//  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_10, SET);
 
   NVIC_EnableIRQ(USART1_IRQn);
   HAL_TIM_Base_Start_IT(&htim2);
@@ -114,10 +114,9 @@ int main(void)
   HAL_TIM_Base_Start_IT(&htim3);
   HAL_TIM_Base_Start(&htim3);
   buttons_pressed = get_key_press(~button_in);
-  //infiniti loop
+  //infinity loop
   while (1)
   {
-
 		//Get Buttons
 		if(HAL_GPIO_ReadPin(Button_1_GPIO_Port, Button_1_Pin)){
 			button_in |= (1<<0);
@@ -138,21 +137,20 @@ int main(void)
 		// Pushbutton 1: Wait for MIDI clock
 		if(buttons_pressed &(1<<0)){
 			wait_for_clock  ^= (1<<0);
-//			HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_4);
+//			HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_10);
 		}
 		// Pushbutton 2: Switch Mode - Mode 2 with 2 bars count-in
 		if(buttons_pressed &(1<<1)){
-
 			mode ^= (1<<0);
 		}
 		// Switch Mode LED
 		  if(mode != mode_old){
 			  mode_old = mode;
 			  if(mode){
-				  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_3, SET);
+				  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_9, SET);
 			  }
 			  else{
-				  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_3, RESET);
+				  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_9, RESET);
 			  }
 		  }
 //Mode 1:
@@ -168,25 +166,25 @@ int main(void)
 					  clock_now = 1;
 					  HAL_TIM_Base_Start(&htim2);
 					  TIM2->CNT = 0;
-					  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_4, SET);
+					  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_10, SET);
 				  }
 				  else{
 					  stop_wait_for_clock();
 				  }
 			  }
-			  	  // Audio input active
-				 if(pulse_received){
-					  pulse_received_handler();
-					}
-				 // Audio input inactive
-				if(audio_gapdetected){
-					audio_gapdetected_stop();
-					wait_for_clock = 0;
+			  // Audio input active
+			 if(pulse_received){
+				  pulse_received_handler();
 				}
+			 // Audio input inactive
+			if(audio_gapdetected){
+				audio_gapdetected_stop();
+				wait_for_clock = 0;
+			}
 		}
 			//Mode 2:
 		else{
-			  if(pulse_count == 384){
+			  if(pulse_count == 192){
 				  USART1-> CR1 |= (1<<3);
 				  buffer[0] = midi_start;
 				  HAL_UART_Transmit_IT(&huart1, buffer, sizeof(buffer));
@@ -221,11 +219,11 @@ void pulse_received_handler(void){
 		led_count++;
 		// Toogle LED
 		if(led_count==8){
-		   HAL_GPIO_WritePin(GPIOB, GPIO_PIN_4, RESET);
+		   HAL_GPIO_WritePin(GPIOB, GPIO_PIN_10, RESET);
 		}
 		if(led_count==24){
 			led_count=0;
-			HAL_GPIO_WritePin(GPIOB, GPIO_PIN_4, SET);
+			HAL_GPIO_WritePin(GPIOB, GPIO_PIN_10, SET);
 		}
 	}
 }
@@ -236,7 +234,8 @@ void audio_gapdetected_stop(void){
 	pulse_received = 0;
 	pulse_count = 0;
     led_count=0;
-    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_4, RESET);
+	midi_status = 0;
+    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_10, RESET);
 }
 
 void stop_wait_for_clock(void){
@@ -244,30 +243,31 @@ void stop_wait_for_clock(void){
 	  buffer[0] = midi_stop;
 	  HAL_UART_Transmit_IT(&huart1, buffer, sizeof(buffer));
 	  clock_now = 0;
+	  midi_status = 0;
 	  TIM2->CNT = 0;
 	  HAL_TIM_Base_Stop(&htim2);
 	  led_count=0;
-	  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_4, RESET);
+	  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_10, RESET);
 }
 
 	void TIM2_IRQHandler(void)
 	{
-		HAL_GPIO_WritePin(GPIOB, GPIO_PIN_4, GPIO_PIN_RESET);
+		HAL_GPIO_WritePin(GPIOB, GPIO_PIN_10, GPIO_PIN_RESET);
 	    count++;
 	    if(count == 5){
 	    	count = 0;
-		if(midi_status){
-		  audio_gapdetected = 1;
-	  }
+			if(midi_status){
+			  audio_gapdetected = 1;
+			}
 	    }
 //	if(wait_for_clock && midi_status == 0){
 	   tim3_count++;
 	   if(tim3_count == 2)
-		   HAL_GPIO_WritePin(GPIOB, GPIO_PIN_4, GPIO_PIN_RESET);
+		   HAL_GPIO_WritePin(GPIOB, GPIO_PIN_10, GPIO_PIN_RESET);
 
 	   if(tim3_count == 15){
 		   tim3_count = 0;
-		   HAL_GPIO_WritePin(GPIOB, GPIO_PIN_4, GPIO_PIN_SET);
+		   HAL_GPIO_WritePin(GPIOB, GPIO_PIN_10, GPIO_PIN_SET);
 	   }
 	  HAL_TIM_IRQHandler(&htim2);
 
@@ -300,8 +300,8 @@ void stop_wait_for_clock(void){
 	void USART1_IRQHandler(void)
 	{
 		uart_flag++;
-		test = USART1-> DR;
-		USART1-> CR1 &= ~(1<<3);
+//		test = USART1-> DR;
+//		USART1-> CR1 &= ~(1<<3);
 
 		HAL_UART_IRQHandler(&huart1);
 
