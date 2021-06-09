@@ -135,7 +135,7 @@ int main(void)
 
 
 		// Pushbutton 1: Wait for MIDI clock
-		if(buttons_pressed &(1<<0)){
+		if((buttons_pressed &(1<<0)) && (mode == 0)){
 			wait_for_clock  ^= (1<<0);
 //			HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_10);
 		}
@@ -148,8 +148,13 @@ int main(void)
 			  mode_old = mode;
 			  if(mode){
 				  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_9, SET);
+				  pulse_count = 0;
 			  }
 			  else{
+				  if(midi_status == 1){
+					  clock_now = 1;
+					  wait_for_clock = 1;
+				  }
 				  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_9, RESET);
 			  }
 		  }
@@ -167,9 +172,10 @@ int main(void)
 					  HAL_TIM_Base_Start(&htim2);
 					  TIM2->CNT = 0;
 					  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_10, SET);
+					  led_count = 23;
 				  }
 				  else{
-					  stop_wait_for_clock();
+					  stop_wait_for_clock(); // Call handler to reset parameters
 				  }
 			  }
 			  // Audio input active
@@ -190,6 +196,7 @@ int main(void)
 				  HAL_UART_Transmit_IT(&huart1, buffer, sizeof(buffer));
 				  pulse_count = 0;
 				  clock_now = 1;
+				  led_count = 23;
 			  }
 			 if(pulse_received){
 				  pulse_received_handler();
@@ -248,6 +255,7 @@ void stop_wait_for_clock(void){
 	  HAL_TIM_Base_Stop(&htim2);
 	  led_count=0;
 	  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_10, RESET);
+	  pulse_count = 0;
 }
 
 	void TIM2_IRQHandler(void)
