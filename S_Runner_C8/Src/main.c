@@ -43,7 +43,7 @@ void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_TIM2_Init(void);
 static void MX_TIM3_Init(void);
-static void MX_USART1_UART_Init(void);
+//static void MX_USART1_UART_Init(void);
 static void MX_USART2_UART_Init(void);
 void stop_wait_for_clock(void);
 void audio_gapdetected_stop(void);
@@ -102,13 +102,13 @@ int main(void)
   MX_GPIO_Init();
   MX_TIM2_Init();
   MX_TIM3_Init();
-  MX_USART1_UART_Init();
+  MX_USART2_UART_Init();
   USART1-> CR1 |= (1<<6);
 //  USART1-> CR1 |= (1<<7);
   AFIO->MAPR |= (1<<24);
 //  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_10, SET);
 
-  NVIC_EnableIRQ(USART1_IRQn);
+  NVIC_EnableIRQ(USART2_IRQn);
   HAL_TIM_Base_Start_IT(&htim2);
   HAL_TIM_Base_Stop(&htim2);
   HAL_TIM_Base_Start_IT(&htim3);
@@ -167,7 +167,7 @@ int main(void)
 				  if(wait_for_clock ){
 					  USART1-> CR1 |= (1<<3);
 					  buffer[0] = midi_start;
-					  HAL_UART_Transmit_IT(&huart1, buffer, sizeof(buffer));
+					  HAL_UART_Transmit_IT(&huart2, buffer, sizeof(buffer));
 					  clock_now = 1;
 					  HAL_TIM_Base_Start(&htim2);
 					  TIM2->CNT = 0;
@@ -193,7 +193,7 @@ int main(void)
 			  if(pulse_count == 192){
 				  USART1-> CR1 |= (1<<3);
 				  buffer[0] = midi_start;
-				  HAL_UART_Transmit_IT(&huart1, buffer, sizeof(buffer));
+				  HAL_UART_Transmit_IT(&huart2, buffer, sizeof(buffer));
 				  pulse_count = 0;
 				  clock_now = 1;
 				  led_count = 23;
@@ -207,7 +207,7 @@ int main(void)
 				audio_gapdetected_stop();
 				USART1-> CR1 |= (1<<3);
 			    buffer[0] = midi_stop;
-			    HAL_UART_Transmit_IT(&huart1, buffer, sizeof(buffer));
+			    HAL_UART_Transmit_IT(&huart2, buffer, sizeof(buffer));
 				pulse_count = 0;
 				HAL_TIM_Base_Stop(&htim2);
 				TIM2->CNT = 0;
@@ -248,7 +248,7 @@ void audio_gapdetected_stop(void){
 void stop_wait_for_clock(void){
 	  USART1-> CR1 |= (1<<3);
 	  buffer[0] = midi_stop;
-	  HAL_UART_Transmit_IT(&huart1, buffer, sizeof(buffer));
+	  HAL_UART_Transmit_IT(&huart2, buffer, sizeof(buffer));
 	  clock_now = 0;
 	  midi_status = 0;
 	  TIM2->CNT = 0;
@@ -311,7 +311,7 @@ void stop_wait_for_clock(void){
 //		test = USART1-> DR;
 //		USART1-> CR1 &= ~(1<<3);
 
-		HAL_UART_IRQHandler(&huart1);
+		HAL_UART_IRQHandler(&huart2);
 
 	}
 
@@ -322,7 +322,7 @@ void stop_wait_for_clock(void){
 		if(clock_now){ //&& pulse_count == 0
 			USART1-> CR1 |= (1<<3);
 			buffer[0] = midi_clock;
-			HAL_UART_Transmit_IT(&huart1, buffer, 1);
+			HAL_UART_Transmit_IT(&huart2, buffer, 1);
 			pulse_received = 1;
 
 		}
@@ -534,7 +534,7 @@ static void MX_TIM3_Init(void)
   * @param None
   * @retval None
   */
-static void MX_USART1_UART_Init(void)
+static void MX_USART2_UART_Init(void)
 {
 
   /* USER CODE BEGIN USART1_Init 0 */
@@ -544,15 +544,15 @@ static void MX_USART1_UART_Init(void)
   /* USER CODE BEGIN USART1_Init 1 */
 
   /* USER CODE END USART1_Init 1 */
-	  huart1.Instance = USART1;
-	  huart1.Init.BaudRate = 31250;
-	  huart1.Init.WordLength = UART_WORDLENGTH_8B;
-	  huart1.Init.StopBits = UART_STOPBITS_1;
-	  huart1.Init.Parity = UART_PARITY_NONE;
-	  huart1.Init.Mode = UART_MODE_TX;
-	  huart1.Init.HwFlowCtl = UART_HWCONTROL_NONE;
-  huart1.Init.OverSampling = UART_OVERSAMPLING_16;
-  if (HAL_UART_Init(&huart1) != HAL_OK)
+	  huart2.Instance = USART2;
+	  huart2.Init.BaudRate = 31250;
+	  huart2.Init.WordLength = UART_WORDLENGTH_8B;
+	  huart2.Init.StopBits = UART_STOPBITS_1;
+	  huart2.Init.Parity = UART_PARITY_NONE;
+	  huart2.Init.Mode = UART_MODE_TX;
+	  huart2.Init.HwFlowCtl = UART_HWCONTROL_NONE;
+  huart2.Init.OverSampling = UART_OVERSAMPLING_16;
+  if (HAL_UART_Init(&huart2) != HAL_OK)
   {
     Error_Handler();
   }
