@@ -165,7 +165,7 @@ int main(void)
 			  if(wait_for_clock != wait_for_clock_old){
 				  wait_for_clock_old = wait_for_clock;
 				  if(wait_for_clock ){
-					  USART1-> CR1 |= (1<<3);
+					  USART2-> CR1 |= (1<<3);
 					  buffer[0] = midi_start;
 					  HAL_UART_Transmit_IT(&huart2, buffer, sizeof(buffer));
 					  clock_now = 1;
@@ -191,7 +191,7 @@ int main(void)
 			//Mode 2:
 		else{
 			  if(pulse_count == 192){
-				  USART1-> CR1 |= (1<<3);
+				  USART2-> CR1 |= (1<<3);
 				  buffer[0] = midi_start;
 				  HAL_UART_Transmit_IT(&huart2, buffer, sizeof(buffer));
 				  pulse_count = 0;
@@ -205,7 +205,7 @@ int main(void)
 			 // Audio input inactive
 			if(audio_gapdetected){
 				audio_gapdetected_stop();
-				USART1-> CR1 |= (1<<3);
+				USART2-> CR1 |= (1<<3);
 			    buffer[0] = midi_stop;
 			    HAL_UART_Transmit_IT(&huart2, buffer, sizeof(buffer));
 				pulse_count = 0;
@@ -246,7 +246,7 @@ void audio_gapdetected_stop(void){
 }
 
 void stop_wait_for_clock(void){
-	  USART1-> CR1 |= (1<<3);
+	  USART2-> CR1 |= (1<<3);
 	  buffer[0] = midi_stop;
 	  HAL_UART_Transmit_IT(&huart2, buffer, sizeof(buffer));
 	  clock_now = 0;
@@ -305,11 +305,11 @@ void stop_wait_for_clock(void){
 
 	}
 
-	void USART1_IRQHandler(void)
+	void USART2_IRQHandler(void)
 	{
 		uart_flag++;
-//		test = USART1-> DR;
-//		USART1-> CR1 &= ~(1<<3);
+//		test = USART2-> DR;
+//		USART2-> CR1 &= ~(1<<3);
 
 		HAL_UART_IRQHandler(&huart2);
 
@@ -320,7 +320,7 @@ void stop_wait_for_clock(void){
 	{
 		// Send MIDI clock
 		if(clock_now){ //&& pulse_count == 0
-			USART1-> CR1 |= (1<<3);
+			USART2-> CR1 |= (1<<3);
 			buffer[0] = midi_clock;
 			HAL_UART_Transmit_IT(&huart2, buffer, 1);
 			pulse_received = 1;
@@ -530,20 +530,20 @@ static void MX_TIM3_Init(void)
 }
 
 /**
-  * @brief USART1 Initialization Function
+  * @brief USART2 Initialization Function
   * @param None
   * @retval None
   */
 static void MX_USART2_UART_Init(void)
 {
 
-  /* USER CODE BEGIN USART1_Init 0 */
+  /* USER CODE BEGIN USART2_Init 0 */
 
-  /* USER CODE END USART1_Init 0 */
+  /* USER CODE END USART2_Init 0 */
 
-  /* USER CODE BEGIN USART1_Init 1 */
+  /* USER CODE BEGIN USART2_Init 1 */
 
-  /* USER CODE END USART1_Init 1 */
+  /* USER CODE END USART2_Init 1 */
 	  huart2.Instance = USART2;
 	  huart2.Init.BaudRate = 31250;
 	  huart2.Init.WordLength = UART_WORDLENGTH_8B;
@@ -556,9 +556,9 @@ static void MX_USART2_UART_Init(void)
   {
     Error_Handler();
   }
-  /* USER CODE BEGIN USART1_Init 2 */
+  /* USER CODE BEGIN USART2_Init 2 */
 
-  /* USER CODE END USART1_Init 2 */
+  /* USER CODE END USART2_Init 2 */
 
 }
 
